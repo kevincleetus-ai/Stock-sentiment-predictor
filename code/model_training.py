@@ -6,7 +6,7 @@ from xgboost import XGBClassifier
 # Load the dataset
 df = pd.read_csv("data/AAPL_features.csv")
 # Select features and target
-features = ["Open", "High", "Low", "Close", "Volume", "avg_sentiment", "num_headlines"]
+features = ["Open", "High", "Low", "Close", "Volume", "avg_sentiment", "num_headlines", "price_change_pct", "ma_7", "ma_30", "volatility", "volume_change_pct", "rsi"]
 X = df[features]
 y = df["target"]
 # Split into train and test sets
