@@ -9,9 +9,8 @@ df = pd.read_csv("data/AAPL_features.csv")
 features = ["Open", "High", "Low", "Close", "Volume", "avg_sentiment", "num_headlines", "price_change_pct", "ma_7", "ma_30", "volatility", "volume_change_pct", "rsi"]
 X = df[features]
 y = df["target"]
-# Split into train and test sets
+# Split into train and test sts
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
 print(f"Training on {len(X_train)} rows, testing on {len(X_test)} rows")
 # Train Random Forest
 rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
