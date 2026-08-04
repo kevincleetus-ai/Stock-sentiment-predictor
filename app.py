@@ -4,6 +4,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import requests
 from transformers import pipeline
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 # Page title
 st.title("📈 Stock Sentiment Predictor")
@@ -19,6 +20,15 @@ def load_finbert():
 
 finbert = load_finbert()
 
+# Retry mechanism for stock data
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+def fetch_stock(ticker):
+    stock = yf.Ticker(ticker)
+    df = stock.history(period="1y")
+    if df.empty:
+        raise ValueError("Empty dataframe")
+    return df.reset_index()
+
 # User input
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, TSLA, GOOGL)", value="AAPL")
 company = st.text_input("Enter Company Name (e.g. Apple, Tesla, Google)", value="Apple")
@@ -28,9 +38,7 @@ if st.button("Analyze"):
     # Stock price chart
     with st.spinner("Fetching stock data..."):
         try:
-            stock = yf.Ticker(ticker)
-            df = stock.history(period="1y")
-            df = df.reset_index()
+            df = fetch_stock(ticker)
 
             st.subheader(f"{ticker} Stock Price - Last 1 Year")
             fig, ax = plt.subplots()
@@ -43,7 +51,7 @@ if st.button("Analyze"):
             st.dataframe(df.tail(10))
 
         except Exception as e:
-            st.warning("Could not fetch stock data right now — Yahoo Finance rate limit. Try again in a moment.")
+            st.warning("Could not fetch stock data after 3 attempts. Please try again in a moment.")
             st.stop()
 
     # News + sentiment
