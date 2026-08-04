@@ -6,21 +6,17 @@ import requests
 from transformers import pipeline
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-# Page title
-st.title("📈 Stock Sentiment Predictor")
+st.title("Stock Sentiment Predictor")
 st.write("Enter a stock ticker to see price data and news sentiment analysis.")
 
-# NewsAPI key
 NEWS_API_KEY = "ddbe6c80440e482cbe37edbba3b709b4"
 
-# Load FinBERT once
 @st.cache_resource
 def load_finbert():
     return pipeline("sentiment-analysis", model="ProsusAI/finbert")
 
 finbert = load_finbert()
 
-# Retry mechanism for stock data
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
 def fetch_stock(ticker):
     stock = yf.Ticker(ticker)
@@ -29,18 +25,16 @@ def fetch_stock(ticker):
         raise ValueError("Empty dataframe")
     return df.reset_index()
 
-# User input
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, TSLA, GOOGL)", value="AAPL")
 company = st.text_input("Enter Company Name (e.g. Apple, Tesla, Google)", value="Apple")
 
 if st.button("Analyze"):
 
-    # Stock price chart
     with st.spinner("Fetching stock data..."):
         try:
             df = fetch_stock(ticker)
 
-            st.subheader(f"{ticker} Stock Price - Last 1 Year")
+            st.subheader(f"{ticker} - Last 1 Year")
             fig, ax = plt.subplots()
             ax.plot(df["Date"], df["Close"])
             ax.set_xlabel("Date")
@@ -51,10 +45,9 @@ if st.button("Analyze"):
             st.dataframe(df.tail(10))
 
         except Exception as e:
-            st.warning("Could not fetch stock data after 3 attempts. Please try again in a moment.")
+            st.warning("Could not fetch stock data after 3 attempts. Try again in a moment.")
             st.stop()
 
-    # News + sentiment
     with st.spinner("Fetching news and analyzing sentiment..."):
         url = f"https://newsapi.org/v2/everything?q={company}+stock&language=en&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
         response = requests.get(url)
@@ -78,11 +71,10 @@ if st.button("Analyze"):
 
         sentiment_df = pd.DataFrame(results)
 
-        st.subheader(f"News Sentiment for {company}")
+        st.subheader(f"Latest News - {company}")
         st.dataframe(sentiment_df)
 
-        # Sentiment summary chart
-        st.subheader("Sentiment Summary")
+        st.subheader("Sentiment Breakdown")
         counts = sentiment_df["sentiment"].value_counts()
         fig2, ax2 = plt.subplots()
         color_map = {"positive": "green", "neutral": "gray", "negative": "red"}
@@ -91,8 +83,7 @@ if st.button("Analyze"):
         ax2.set_ylabel("Number of Headlines")
         st.pyplot(fig2)
 
-    # Prediction
-    with st.spinner("Making prediction..."):
+    with st.spinner("Running prediction..."):
         import joblib
         import numpy as np
 
@@ -120,10 +111,10 @@ if st.button("Analyze"):
 
         prediction = model.predict(X_latest)[0]
 
-        st.subheader("📊 Prediction")
+        st.subheader("Prediction")
         if prediction == 1:
-            st.success(f"🟢 {ticker} is predicted to go UP tomorrow!")
+            st.success(f"{ticker} is predicted to go UP tomorrow")
         else:
-            st.error(f"🔴 {ticker} is predicted to go DOWN tomorrow!")
+            st.error(f"{ticker} is predicted to go DOWN tomorrow")
 
-    st.success("Analysis complete!")
+    st.success("Done")

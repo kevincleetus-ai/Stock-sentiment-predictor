@@ -1,17 +1,15 @@
 from transformers import pipeline
 import pandas as pd
 
-# Load FinBERT sentiment analysis pipeline
-print("Loading FinBERT model...")
+# takes a while to load so good to know when it starts
+print("Loading FinBERT...")
 finbert = pipeline("sentiment-analysis", model="ProsusAI/finbert")
 
-# Load your headlines
 df = pd.read_csv("data/AAPL_news.csv")
 
-# Run sentiment analysis on each headline
-print("Analyzing sentiment...")
 results = []
 
+# run each headline through finbert, skip any that cause issues
 for _, row in df.iterrows():
     try:
         result = finbert(row["headline"][:512])
@@ -22,18 +20,16 @@ for _, row in df.iterrows():
             "score": result[0]["score"]
         })
     except Exception as e:
-        print(f"Skipped a headline due to error: {e}")
+        print(f"skipped one: {e}")
         continue
 
-# Convert to dataframe
 sentiment_df = pd.DataFrame(results)
 
-# Save to CSV
 sentiment_df.to_csv("data/AAPL_sentiment.csv", index=False)
 
-print(f"Done! Analyzed {len(sentiment_df)} headlines")
+print(f"done — {len(sentiment_df)} headlines analyzed")
 
-# Print cleanly without encoding issues
+# some headlines have weird characters that break the terminal print
 try:
     print(sentiment_df.head().to_string())
 except UnicodeEncodeError:
