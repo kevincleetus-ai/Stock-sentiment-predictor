@@ -1,24 +1,35 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-from transformers import pipeline
 import matplotlib.pyplot as plt
+import requests
+from transformers import pipeline
 
-# Page title
+# Page title    
 st.title("📈 Stock Sentiment Predictor")
 st.write("Enter a stock ticker to see price data and news sentiment analysis.")
 
+# NewsAPI key
+NEWS_API_KEY = "ddbe6c80440e482cbe37edbba3b709b4"
+
+# Load FinBERT once
+@st.cache_resource
+def load_finbert():
+    return pipeline("sentiment-analysis", model="ProsusAI/finbert")
+
+finbert = load_finbert()
+
 # User input
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, TSLA, GOOGL)", value="AAPL")
+company = st.text_input("Enter Company Name (e.g. Apple, Tesla, Google)", value="Apple")
 
 if st.button("Analyze"):
+    # Stock price chart
     with st.spinner("Fetching stock data..."):
-        # Pull stock data
         stock = yf.Ticker(ticker)
         df = stock.history(period="1y")
         df = df.reset_index()
 
-        # Plot stock price
         st.subheader(f"{ticker} Stock Price - Last 1 Year")
         fig, ax = plt.subplots()
         ax.plot(df["Date"], df["Close"])
@@ -26,8 +37,83 @@ if st.button("Analyze"):
         ax.set_ylabel("Price (USD)")
         st.pyplot(fig)
 
-        # Show raw data
         st.subheader("Raw Price Data")
         st.dataframe(df.tail(10))
 
-    st.success("Done! Sentiment analysis coming soon.")
+    # News + sentiment
+    with st.spinner("Fetching news and analyzing sentiment..."):
+        url = f"https://newsapi.org/v2/everything?q={company}+stock&language=en&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
+        response = requests.get(url)
+        data = response.json()
+        articles = data["articles"]
+
+        results = []
+        for article in articles[:20]:  # limit to 20 headlines
+            headline = article["title"]
+            try:
+                sentiment = finbert(headline[:512])[0]
+                results.append({
+                    "date": article["publishedAt"],
+                    "headline": headline,
+                    "source": article["source"]["name"],
+                    "sentiment": sentiment["label"],
+                    "score": round(sentiment["score"], 2)
+                })
+            except:
+                continue
+
+        sentiment_df = pd.DataFrame(results)
+
+        st.subheader(f"News Sentiment for {company}")
+        st.dataframe(sentiment_df)
+
+        # Sentiment summary
+        st.subheader("Sentiment Summary")
+        counts = sentiment_df["sentiment"].value_counts()
+        fig2, ax2 = plt.subplots()
+        color_map = {"positive": "green", "neutral": "gray", "negative": "red"}
+        colors = [color_map.get(label, "blue") for label in counts.index]
+        ax2.bar(counts.index, counts.values, color=colors)
+        ax2.set_ylabel("Number of Headlines")
+        st.pyplot(fig2)
+
+        # Prediction
+    with st.spinner("Making prediction..."):
+        import joblib
+        import numpy as np
+
+        model = joblib.load("models/xgb_model.pkl")
+
+        # Get latest stock data for prediction
+        latest = df.tail(60).copy()
+        latest["ma_7"] = latest["Close"].rolling(window=7).mean()
+        latest["ma_30"] = latest["Close"].rolling(window=30).mean()
+        latest["volatility"] = latest["Close"].rolling(window=7).std()
+        latest["price_change_pct"] = latest["Close"].pct_change() * 100
+        latest["volume_change_pct"] = latest["Volume"].pct_change() * 100
+        delta = latest["Close"].diff()
+        gain = delta.where(delta > 0, 0).rolling(window=14).mean()
+        loss = -delta.where(delta < 0, 0).rolling(window=14).mean()
+        rs = gain / loss
+        latest["rsi"] = 100 - (100 / (1 + rs))
+
+        # Average sentiment from today's headlines
+        avg_sent = sentiment_df["sentiment"].map({"positive": 1, "neutral": 0, "negative": -1}).mean()
+
+        latest["avg_sentiment"] = avg_sent
+        latest["num_headlines"] = len(sentiment_df)
+        latest = latest.dropna()
+
+        features = ["Open", "High", "Low", "Close", "Volume", "avg_sentiment", "num_headlines", "price_change_pct", "ma_7", "ma_30", "volatility", "volume_change_pct", "rsi"]
+        X_latest = latest[features].tail(1)
+        st.write(f"Rows available for prediction: {len(X_latest)}")
+
+        prediction = model.predict(X_latest)[0]
+
+        st.subheader("📊 Prediction")
+        if prediction == 1:
+            st.success(f"🟢 {ticker} is predicted to go UP tomorrow!")
+        else:
+            st.error(f"🔴 {ticker} is predicted to go DOWN tomorrow!")
+
+    st.success("Analysis complete!")

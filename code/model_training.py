@@ -1,15 +1,15 @@
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
-from xgboost import XGBClassifier
+import pandas as pd # type: ignore
+from sklearn.model_selection import train_test_split # type: ignore
+from sklearn.ensemble import RandomForestClassifier # type: ignore
+from sklearn.metrics import accuracy_score, classification_report # type: ignore
+from xgboost import XGBClassifier # type: ignore
 # Load the dataset
 df = pd.read_csv("data/AAPL_features.csv")
 # Select features and target
 features = ["Open", "High", "Low", "Close", "Volume", "avg_sentiment", "num_headlines", "price_change_pct", "ma_7", "ma_30", "volatility", "volume_change_pct", "rsi"]
 X = df[features]
 y = df["target"]
-# Split into train and test sts
+# Split into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 print(f"Training on {len(X_train)} rows, testing on {len(X_test)} rows")
 # Train Random Forest
@@ -29,3 +29,8 @@ print(f"XGBoost Accuracy: {xgb_accuracy:.2%}")
 # Detailed report for best model
 print("\nXGBoost Classification Report:")
 print(classification_report(y_test, xgb_preds))
+import joblib
+
+# Save the best model
+joblib.dump(xgb_model, "models/xgb_model.pkl")
+print("Model saved!")
