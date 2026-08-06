@@ -69,7 +69,7 @@ if st.button("Analyze"):
 
         sentiment_df = pd.DataFrame(results)
 
-        st.subheader(f"Latest News - {company}")
+        st.subheader(f"Latest News - {ticker}")
         st.dataframe(sentiment_df)
 
         st.subheader("Sentiment Breakdown")
