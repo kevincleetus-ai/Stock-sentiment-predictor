@@ -26,6 +26,7 @@ def fetch_stock(ticker):
     return df.reset_index()
 
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, TSLA, GOOGL)", value="AAPL")
+company = st.text_input("Enter Company Name (e.g. Apple, Tesla, Meta)", value="Apple")
 if st.button("Analyze"):
 
     with st.spinner("Fetching stock data..."):
@@ -47,7 +48,7 @@ if st.button("Analyze"):
             st.stop()
 
     with st.spinner("Fetching news and analyzing sentiment..."):
-        url = f"https://newsapi.org/v2/everything?q={ticker}+stock&language=en&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
+        url = f"https://newsapi.org/v2/everything?q={ticker}+{company}+stock&language=en&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
         response = requests.get(url)
         data = response.json()
         articles = data["articles"]
@@ -69,7 +70,7 @@ if st.button("Analyze"):
 
         sentiment_df = pd.DataFrame(results)
 
-        st.subheader(f"Latest News - {ticker}")
+        st.subheader(f"Latest News - {company}")
         st.dataframe(sentiment_df)
 
         st.subheader("Sentiment Breakdown")
