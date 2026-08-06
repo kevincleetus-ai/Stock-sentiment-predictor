@@ -6,7 +6,7 @@ ticker = "AAPL"
 company = "Apple"
 
 # pull latest news articles mentioning the company
-url = f"https://newsapi.org/v2/everything?q={company}+stock&language=en&sortBy=publishedAt&apiKey={API_KEY}"
+url = f"https://newsapi.org/v2/everything?q={ticker}+stock&language=en&sortBy=publishedAt&apiKey={API_KEY}"
 response = requests.get(url)
 data = response.json()
 articles = data["articles"]
